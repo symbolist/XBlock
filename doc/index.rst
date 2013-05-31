@@ -33,6 +33,7 @@ Contents:
     guide/xblock
     guide/runtimes
     guide/fragment
+    tutorial
 
 
 API
