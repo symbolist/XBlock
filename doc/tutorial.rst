@@ -14,7 +14,7 @@ Based on this: ::
 
     <vertical>
         <simplevideo href="https://vimeo.com/46100581" maxwidth="800" />
-        <div>Rate the video:</div>
+        <html><div>Rate the video:</div></html>
         <thumbs />
     </vertical>
 
@@ -38,9 +38,9 @@ First, grab the source code for XBlock at https://github.com/edx/XBlock: ::
 
     $ git clone https://github.com/edx/XBlock.git
     $ cd XBlock
-    $ gvim README.md
+    $ gvim README.rst
 
-Follow the instructions in `README.md` to get the workbench server up and running. Once you're done,
+Follow the instructions in `README.rst` to get the workbench server up and running. Once you're done,
 you should be able to visit http://127.0.0.1:8000/ and see the following interface showing up:
 
 .. image:: images/workbench_home.png
@@ -68,7 +68,8 @@ We are defining the `<simplevideo>` XBlock, which we want to allow to accept dif
 To control the `<simplevideo>` tag, we create a subclass the XBlock class in
 `xblock-simplevideo/simplevideo.py`, and declare a data schema for the attributes: ::
 
-    from xblock.core import XBlock, Scope, Integer, String
+    from xblock.core import XBlock
+    from xblock.fields import Scope, Integer, String
 
     class SimpleVideoBlock(XBlock):
         """
@@ -163,9 +164,9 @@ Static files
 ------------
 
 To load static resources, we are using Python's `pkg_resources module
-<http://pythonhosted.org/distribute/pkg_resources.html>`_. The default directory structure directory
-structure with folders for `css`, `html`, and `js` files.  However, this structure is not mandatory.
-Each XBlock can choose its directory structure, as long as it specifies the correct paths to
+<http://pythonhosted.org/distribute/pkg_resources.html>`_. The default directory structure makes
+use of individual `css`, `html`, and `js` folders. This structure is not mandatory though, each 
+XBlock can choose its own, as long as it specifies the correct paths in the call to 
 `pkg_resources`.
 
 Here we only need a very simple template, which we create in
@@ -191,7 +192,7 @@ could be done using the following markup ::
 
     <vertical>
         <simplevideo href="https://vimeo.com/46100581" maxwidth="800" />
-        <div>Rate the video:</div>
+        <html><div>Rate the video:</div></html>
         <thumbs />
     </vertical>
 
@@ -216,7 +217,7 @@ define a scenario for the workbench, add the following method to the `SimpleVide
             """\
                 <vertical>
                     <simplevideo href="https://vimeo.com/46100581" maxwidth="800" />
-                    <div>Rate the video:</div>
+                    <html><div>Rate the video:</div></html>
                     <thumbs />
                 </vertical>
              """)
@@ -379,7 +380,7 @@ Create the `xblock-simplevideo/static/js/simplevideo.js` file: ::
         function on_finish(id) {
             $.ajax({
                 type: "POST",
-                url: runtime.handler_url('mark_as_watched'),
+                url: runtime.handlerUrl(element, 'mark_as_watched'),
                 data: JSON.stringify({watched: true}),
                 success: function(result) {
                     watched_status.text(result.watched);
@@ -398,7 +399,7 @@ Here, we:
 * Pass it to the Froogaloop library to get the `player` object, 
 * Capture "*finish*" events from the `player` once it is ready,
 * Make an Ajax call to the `SimpleVideoBlock.mark_as_watched()` method when it is fired (we obtain
-  the URL for the Ajax call through the `runtime.handler_url()` method)
+  the URL for the Ajax call through the `runtime.handlerUrl()` method)
 
 Also notice that:
 
@@ -421,7 +422,7 @@ which will store the number of times the user has completed watching the video: 
         [...]
 
         @XBlock.json_handler
-        def mark_as_watched(self, data):
+        def mark_as_watched(self, data, suffix=''):
             """
             Called upon completion of the video
             """
