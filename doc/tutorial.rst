@@ -12,11 +12,11 @@ To give you a sneak peek, the goal is to generate this:
 
 Based on this: ::
 
-    <vertical>
+    <vertical_demo>
         <simplevideo href="https://vimeo.com/46100581" maxwidth="800" />
-        <html><div>Rate the video:</div></html>
+        <html_demo><div>Rate the video:</div></html_demo>
         <thumbs />
-    </vertical>
+    </vertical_demo>
 
 Setup
 =====
@@ -215,11 +215,11 @@ How do we actually use the `<simplevideo>` tag we just defined? Let's say that w
 a new course, and we want to display the video from https://vimeo.com/46100581 to the students. This
 could be done using the following markup ::
 
-    <vertical>
+    <vertical_demo>
         <simplevideo href="https://vimeo.com/46100581" maxwidth="800" />
-        <html><div>Rate the video:</div></html>
+        <html_demo><div>Rate the video:</div></html_demo>
         <thumbs />
-    </vertical>
+    </vertical_demo>
 
 This is how courses are built - such markup constitute the basic static building block for course
 content. The instructor combines different XBlocks like this, to eventually have the whole course
