@@ -509,7 +509,7 @@ To implement the edit UI, we need add the `studio_view` method to the
         return frag
 
 The `studio_view` method looks similar to the `student_view` method. It constructs a fragment
-from a static template. The `statis/html/simplevideo_edit.html` template contains the form
+from a static template. The `static/html/simplevideo_edit.html` template contains the form
 the is displayed to the user when editing the block in the Studio: ::
 
     <div class="wrapper-comp-settings is-active editor-with-buttons" id="settings-tab">
