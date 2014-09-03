@@ -288,6 +288,7 @@ class Field(object):
     # pylint: disable=W0622
     def __init__(self, help=None, default=UNSET, scope=Scope.content,
                  display_name=None, values=None, enforce_type=False, **kwargs):
+        self.warned = False
         self._name = "unknown"
         self.help = help
         self._enable_enforce_type = enforce_type
@@ -504,8 +505,9 @@ class Field(object):
         This is called during field writes to convert the native python
         type to the value stored in the database
         """
-        if not isinstance(self, JSONField):
-            logging.warn("Deprecated. JSONifiable fields should derive from JSONField")
+        if not isinstance(self, JSONField) and not self.warned:
+            warnings.warn("Deprecated. JSONifiable fields should derive from JSONField ({name})".format(name=self.name), DeprecationWarning, stacklevel=2)
+            self.warned = True
         return value
 
     def from_json(self, value):
@@ -515,8 +517,9 @@ class Field(object):
         Called during field reads to convert the stored value into a full featured python
         object
         """
-        if not isinstance(self, JSONField):
-            logging.warn("Deprecated. JSONifiable fields should derive from JSONField")
+        if not isinstance(self, JSONField) and not self.warned:
+            warnings.warn("Deprecated. JSONifiable fields should derive from JSONField ({name})".format(name=self.name), DeprecationWarning, stacklevel=2)
+            self.warned = True
         return value
 
     def enforce_type(self, value):
@@ -541,8 +544,9 @@ class Field(object):
         """
         Retrieve the serialized value for this field from the specified xblock
         """
-        if not isinstance(self, JSONField):
-            logging.warn("Deprecated. JSONifiable fields should derive from JSONField")
+        if not isinstance(self, JSONField) and not self.warned:
+            warnings.warn("Deprecated. JSONifiable fields should derive from JSONField ({name})".format(name=self.name), DeprecationWarning, stacklevel=2)
+            self.warned = True
         return self.to_json(self.read_from(xblock))
 
     def write_to(self, xblock, value):
