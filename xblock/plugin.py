@@ -54,10 +54,15 @@ class Plugin(object):
 
     entry_point = None  # Should be overwritten by children classes
 
+    failed_loads, successful_loads = [], []
+
     # Temporary entry points, for register_temp_plugin.  A list of pairs,
     # (identifier, entry_point):
     #   [('test1', test1_entrypoint), ('test2', test2_entrypoint), ...]
     extra_entry_points = []
+
+    # For whether to run _load_entry_points:
+    _entry_points_loaded = False
 
     @classmethod
     def _load_class_entry_point(cls, entry_point):
@@ -115,25 +120,50 @@ class Plugin(object):
         return PLUGIN_CACHE[key]
 
     @classmethod
-    def load_classes(cls):
-        """Load all the classes for a plugin.
+    def _load_entry_points(cls):
+        """Load all the classes for a plugin, handle errors
 
-        Produces a sequence containing the identifiers and their corresponding
-        classes for all of the available instances of this plugin.
+        Produces a sequences containing the identifiers and their corresponding
+        classes for successfully loaded instances of this plugin, and a sequence
+        of dictionaries for all of the failed instances of this plugin.
 
         """
+        if cls._entry_points_loaded:
+            return
+
+        cls.failed_loads, cls.successful_loads = [], []
         all_classes = itertools.chain(
             pkg_resources.iter_entry_points(cls.entry_point),
             (entry_point for identifier, entry_point in cls.extra_entry_points),
         )
         for class_ in all_classes:
             try:
-                yield (class_.name, cls._load_class_entry_point(class_))
-            except Exception:  # pylint: disable=broad-except
-                log.warning('Unable to load %s %r', cls.__name__, class_.name, exc_info=True)
+                cls.successful_loads.append((class_.name, cls._load_class_entry_point(class_)))
+            except Exception as exc:  # pylint: disable=broad-except
+                cls.failed_loads.append({
+                    "name": class_.name,
+                    "exception": exc
+                })
 
     @classmethod
-    def register_temp_plugin(cls, class_, identifier=None, dist='xblock'):
+    def load_classes(cls):
+        """
+        Returns sequence of tuples of successfully loaded instances (name, class)
+        """
+        cls._load_entry_points()
+        return cls.successful_loads
+
+    @classmethod
+    def failed_classes(cls):
+        """
+        Returns sequence of dictionaries for failed instances, with
+        attributes "name" and "exception" accordingly.
+        """
+        cls._load_entry_points()
+        return cls.failed_loads
+
+    @classmethod
+    def register_temp_plugin(cls, class_, identifier=None, dist='xblock', load_error=None):
         """Decorate a function to run with a temporary plugin available.
 
         Use it like this in tests::
@@ -150,7 +180,7 @@ class Plugin(object):
 
         entry_point = Mock(
             dist=Mock(key=dist),
-            load=Mock(return_value=class_),
+            load=Mock(return_value=load_error or class_),
         )
         entry_point.name = identifier
 
@@ -158,6 +188,7 @@ class Plugin(object):
             @functools.wraps(func)
             def _inner(*args, **kwargs):                # pylint: disable=C0111
                 old = list(cls.extra_entry_points)
+                cls._entry_points_loaded = False
                 cls.extra_entry_points.append((identifier, entry_point))
                 try:
                     return func(*args, **kwargs)
