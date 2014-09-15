@@ -163,6 +163,10 @@ class Plugin(object):
     def register_temp_plugin(cls, class_, identifier=None, dist='xblock', load_error=None):
         """Decorate a function to run with a temporary plugin available.
 
+        `identifier` is the class name for the plugin.
+        `dist` is irrelevant for XBlock and XBlock SDK, but may affect other things (e.g. edx-platform, possibly)
+        `load_error` is for testing: it forces the Mock entry point load to raise an Exception.
+
         Use it like this in tests::
 
             @register_temp_plugin(MyXBlockClass):
