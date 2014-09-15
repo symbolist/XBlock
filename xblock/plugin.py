@@ -54,15 +54,12 @@ class Plugin(object):
 
     entry_point = None  # Should be overwritten by children classes
 
-    failed_loads, successful_loads = [], []
+    failed_loads, successful_loads = None, None
 
     # Temporary entry points, for register_temp_plugin.  A list of pairs,
     # (identifier, entry_point):
     #   [('test1', test1_entrypoint), ('test2', test2_entrypoint), ...]
     extra_entry_points = []
-
-    # For whether to run _load_entry_points:
-    _entry_points_loaded = False
 
     @classmethod
     def _load_class_entry_point(cls, entry_point):
@@ -120,7 +117,7 @@ class Plugin(object):
         return PLUGIN_CACHE[key]
 
     @classmethod
-    def _load_entry_points(cls):
+    def _load_entry_points(cls, update=False):
         """Load all the classes for a plugin, handle errors
 
         Produces a sequences containing the identifiers and their corresponding
@@ -128,8 +125,8 @@ class Plugin(object):
         of dictionaries for all of the failed instances of this plugin.
 
         """
-        if cls._entry_points_loaded:
-            return
+        if not (update or cls.successful_loads is None):
+            return  # If we've loaded, and aren't forcing an update, use the old list. 
 
         cls.failed_loads, cls.successful_loads = [], []
         all_classes = itertools.chain(
@@ -188,7 +185,7 @@ class Plugin(object):
             @functools.wraps(func)
             def _inner(*args, **kwargs):                # pylint: disable=C0111
                 old = list(cls.extra_entry_points)
-                cls._entry_points_loaded = False
+                cls._load_entry_points(update=True)
                 cls.extra_entry_points.append((identifier, entry_point))
                 try:
                     return func(*args, **kwargs)
