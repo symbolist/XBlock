@@ -120,7 +120,7 @@ class Plugin(object):
     def _load_entry_points(cls, update=False):
         """Load all the classes for a plugin, handle errors
 
-        Produces a sequences containing the identifiers and their corresponding
+        Produces sequences containing the identifiers and their corresponding
         classes for successfully loaded instances of this plugin, and a sequence
         of dictionaries for all of the failed instances of this plugin.
 
