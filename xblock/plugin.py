@@ -126,7 +126,7 @@ class Plugin(object):
 
         """
         if not (update or cls.successful_loads is None):
-            return  # If we've loaded, and aren't forcing an update, use the old list. 
+            return  # If we've loaded, and aren't forcing an update, use the old list.
 
         cls.failed_loads, cls.successful_loads = [], []
         all_classes = itertools.chain(
@@ -185,8 +185,8 @@ class Plugin(object):
             @functools.wraps(func)
             def _inner(*args, **kwargs):                # pylint: disable=C0111
                 old = list(cls.extra_entry_points)
-                cls._load_entry_points(update=True)
                 cls.extra_entry_points.append((identifier, entry_point))
+                cls._load_entry_points(update=True)
                 try:
                     return func(*args, **kwargs)
                 finally:
