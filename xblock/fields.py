@@ -15,6 +15,7 @@ import logging
 import pytz
 import traceback
 import warnings
+import json
 
 
 # __all__ controls what classes end up in the docs, and in what order.
@@ -659,16 +660,23 @@ class Dict(JSONField):
     """
     A field class for representing a Python dict.
 
-    The value, as loaded or enforced, must be either be None or a dict.
+    The value, as loaded or enforced, must be either be None, a dict or string containing json-encoded dict
 
     """
     _default = {}
 
     def from_json(self, value):
-        if value is None or isinstance(value, dict):
-            return value
-        else:
-            raise TypeError('Value stored in a Dict must be None or a dict, found %s' % type(value))
+        val = value
+        try:
+            if isinstance(value, basestring):
+                val = json.loads(value)
+        except ValueError:
+            logging.warn("Failed to decode json for Dict field: %s", value, exc_info=True)
+
+        if val is None or isinstance(val, dict):
+            return val
+
+        raise TypeError('Value stored in a Dict must be None, a dict or json-encoded dict, found %s' % type(value))
 
     enforce_type = from_json
 

@@ -5,7 +5,7 @@ Tests for classes extending Field.
 # Allow accessing protected members for testing purposes
 # pylint: disable=W0212
 
-from mock import MagicMock, Mock
+from mock import MagicMock, Mock, patch
 import unittest
 
 import datetime as dt
@@ -364,6 +364,32 @@ class DictTest(FieldTest):
     def test_json_equals(self):
         self.assertJSONOrSetEquals({}, {})
         self.assertJSONOrSetEquals({'a': 'b', 'c': 3}, {'a': 'b', 'c': 3})
+
+    def test_given_json_encoded_returns_decoded(self):
+        self.assertJSONOrSetEquals({}, '{}')
+        self.assertJSONOrSetEquals({'a': 'b', 'c': 3}, '{"a": "b", "c": 3}')
+        self.assertJSONOrSetEquals({'a': 'b', 'c': 3, 'd': {}}, '{"a": "b", "c": 3, "d":{}}')
+        self.assertJSONOrSetEquals(
+            {'a': 'b', 'c': 3, 'd': {'e': 1, 'f': 'g'}},
+            '{"a": "b", "c": 3, "d": {"e": 1, "f": "g"}}'
+        )
+
+    def test_given_malformed_json_raises_type_error(self):
+        malformed_list = [
+            '',
+            '{',
+            '}',
+            '"a": 1, "b":2',
+            '{"a": 1, "b":2',
+            '"a": 1, "b":2}',
+            '{"a": 1 "b":2}',
+            '{"a"= 1, "b"# 2}',
+            '{"a": 1, "b": 2, "c":{}',
+        ]
+        with patch('logging.warn') as patched_logger:
+            for malformed in malformed_list:
+                self.assertJSONOrSetTypeError(malformed)
+                patched_logger.assert_called_with("Failed to decode json for Dict field: %s", malformed, exc_info=True)
 
     def test_none(self):
         self.assertJSONOrSetEquals(None, None)
