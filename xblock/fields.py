@@ -525,7 +525,7 @@ class Field(object):
         """
         Return a JSON serialized string representation of the value.
         """
-        return json.dumps(value)
+        return json.dumps(value, indent=2, sort_keys=True)
 
     def from_string(self, serialized):
         """

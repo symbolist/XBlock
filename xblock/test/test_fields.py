@@ -12,6 +12,7 @@ import datetime as dt
 import pytz
 import warnings
 import math
+import textwrap
 from contextlib import contextmanager
 
 from xblock.core import XBlock, Scope
@@ -592,6 +593,15 @@ class FieldSerializationTest(unittest.TestCase):
         with self.assertRaises(StandardError):
             _type(enforce_type=True).from_string(string)
 
+    def assert_fuzzy_strings(self, _type, value, strings, re):
+        """
+        Asserts that every element of `strings` is converted to `value`,
+        and converting `value` results in a string that matches `re`.
+        """
+        for string in strings:
+            self.assert_from_string(Float, string, value)
+        self.assert_to_string_regexp(Float, value, re)
+
     def test_both_directions(self):
         """Easy cases that work in both directions."""
         self.assert_to_from_string(Integer, 0, '0')
@@ -605,6 +615,42 @@ class FieldSerializationTest(unittest.TestCase):
         self.assert_to_from_string(Float, float('inf'), 'Infinity')
         self.assert_to_from_string(Float, float('-inf'), '-Infinity')
 
+        self.assert_to_from_string(Boolean, False, 'false')
+        self.assert_to_from_string(Integer, True, 'true')
+
+        self.assert_to_from_string(String, "", '""')
+        self.assert_to_from_string(String, "foo", '"foo"')
+        self.assert_to_from_string(String, "bar", '"bar"')
+
+        self.assert_to_from_string(Dict, {}, '{}')
+        self.assert_to_from_string(List, [], '[]')
+
+        self.assert_to_from_string(
+            Dict, {"foo":1, "bar":2}, textwrap.dedent("""\
+            {
+              "bar": 2, 
+              "foo": 1
+            }"""))
+
+        self.assert_to_from_string(
+            List, [1, 2, 3], textwrap.dedent("""\
+            [
+              1, 
+              2, 
+              3
+            ]"""))
+
+        self.assert_to_from_string(
+            Dict, {"foo":[1, 2, 3], "bar":2}, textwrap.dedent("""\
+            {
+              "bar": 2, 
+              "foo": [
+                1, 
+                2, 
+                3
+              ]
+            }"""))
+
     def test_float_special_cases(self):
         """Tricky cases of the float field."""
 
@@ -612,16 +658,16 @@ class FieldSerializationTest(unittest.TestCase):
             result = _type(enforce_type=True).from_string(string)
             self.assertTrue(math.isnan(result))
 
-        def _assert_fuzzy_strings(_type, value, strings, re):
-            for string in strings:
-                self.assert_from_string(Float, string, value)
-            self.assert_to_string_regexp(Float, value, re)
-
-        _assert_fuzzy_strings(Float, 0.0, ['0', '0.0'], "0|0\.0*")
-        _assert_fuzzy_strings(Float, 1.0, ['1', '1.0'], "1|1\.0*")
-        _assert_fuzzy_strings(Float, -10.0, ['-10', '-10.0'], "-10|-10\.0*")
-
         _assert_from_string_is_nan(Float, 'NaN')
+
+        self.assert_fuzzy_strings(Float, 0.0, ['0', '0.0'], "0|0\.0*")
+        self.assert_fuzzy_strings(Float, 1.0, ['1', '1.0'], "1|1\.0*")
+        self.assert_fuzzy_strings(Float, -10.0, ['-10', '-10.0'], "-10|-10\.0*")
+
+    def test_boolean_special_cases(self):
+        """Tricky cases of the boolean field."""
+        self.assert_fuzzy_strings(Boolean, True, ['true', 'TRUE'], "true")
+        self.assert_fuzzy_strings(Boolean, False, ['false', 'FALSE'], "false")
 
     def test_from_string_errors(self):
         """ Cases that raises various exceptions."""
@@ -634,8 +680,10 @@ class FieldSerializationTest(unittest.TestCase):
         #TODO: this should be a bit more strict
         #self.assert_from_string_fails_except_for(Integer, (Integer,))
         #self.assert_from_string_fails_except_for(Float, (Integer, Float))
+        #self.assert_from_string_fails_except_for(Boolean, (Boolean, ))
         self.assert_from_string_fails_except_for(Integer, (Integer, Float, Boolean))
         self.assert_from_string_fails_except_for(Float, (Integer, Float, Boolean))
+        #self.assert_from_string_fails_except_for(Boolean, (Integer, Float, Boolean))
 
         #TODO: I think these should produce errors
         #self.assert_from_string_error(Integer, "true")
