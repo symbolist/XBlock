@@ -11,6 +11,7 @@ import unittest
 import datetime as dt
 import pytz
 import warnings
+import math
 from contextlib import contextmanager
 
 from xblock.core import XBlock, Scope
@@ -549,3 +550,96 @@ class SentinelTest(unittest.TestCase):
         self.assertEquals(a_dict[base], True)
         self.assertNotIn(Sentinel('foo'), a_dict)
         self.assertNotIn('base', a_dict)
+
+
+class FieldSerializationTest(unittest.TestCase):
+    """
+    Tests field.from_string and field.to_string methods.
+    """
+
+    def assert_from_string_fails_except_for(self, type_under_test, types):
+        tests = {
+            Integer: "10", Float: "1.34562", Boolean: "true",
+            Dict: '{"foo":"bar"}', List: '[1, 2, 3]', String: '"baz"',
+        }
+        for t in types:
+            tests.pop(t)
+
+        for serialized in tests.values():
+            try:
+                self.assert_from_string_error(type_under_test, serialized)
+            except AssertionError as e:
+                e.args += ("Tried to load from:", serialized)
+                raise
+
+    def assert_to_string(self, _type, value, string):
+        result = _type(enforce_type=True).to_string(value)
+        self.assertEquals(result, string)
+
+    def assert_from_string(self, _type, string, value):
+        result = _type(enforce_type=True).from_string(string)
+        self.assertEquals(result, value)
+
+    def assert_to_from_string(self, _type, value, string):
+        self.assert_to_string(_type, value, string)
+        self.assert_from_string(_type, string, value)
+
+    def assert_to_string_regexp(self, _type, value, re):
+        result = _type(enforce_type=True).to_string(value)
+        self.assertRegexpMatches(result, re)
+
+    def assert_from_string_error(self, _type, string):
+        with self.assertRaises(StandardError):
+            _type(enforce_type=True).from_string(string)
+
+    def test_both_directions(self):
+        """Easy cases that work in both directions."""
+        self.assert_to_from_string(Integer, 0, '0')
+        self.assert_to_from_string(Integer, 5, '5')
+        self.assert_to_from_string(Integer, -1023, '-1023')
+        self.assert_to_from_string(Integer, 12345678, "12345678")
+
+        self.assert_to_from_string(Float, 5.321, '5.321')
+        self.assert_to_from_string(Float, -1023.35, '-1023.35')
+        self.assert_to_from_string(Float, 1e+100, '1e+100')
+        self.assert_to_from_string(Float, float('inf'), 'Infinity')
+        self.assert_to_from_string(Float, float('-inf'), '-Infinity')
+
+    def test_float_special_cases(self):
+        """Tricky cases of the float field."""
+
+        def _assert_from_string_is_nan(_type, string):
+            result = _type(enforce_type=True).from_string(string)
+            self.assertTrue(math.isnan(result))
+
+        def _assert_fuzzy_strings(_type, value, strings, re):
+            for string in strings:
+                self.assert_from_string(Float, string, value)
+            self.assert_to_string_regexp(Float, value, re)
+
+        _assert_fuzzy_strings(Float, 0.0, ['0', '0.0'], "0|0\.0*")
+        _assert_fuzzy_strings(Float, 1.0, ['1', '1.0'], "1|1\.0*")
+        _assert_fuzzy_strings(Float, -10.0, ['-10', '-10.0'], "-10|-10\.0*")
+
+        _assert_from_string_is_nan(Float, 'NaN')
+
+    def test_from_string_errors(self):
+        """ Cases that raises various exceptions."""
+
+        self.assert_from_string_error(Integer, "1.abc")
+        self.assert_from_string_error(Integer, "defg")
+        self.assert_from_string_error(Float, "1.abc")
+        self.assert_from_string_error(Float, "defg")
+
+        #TODO: this should be a bit more strict
+        #self.assert_from_string_fails_except_for(Integer, (Integer,))
+        #self.assert_from_string_fails_except_for(Float, (Integer, Float))
+        self.assert_from_string_fails_except_for(Integer, (Integer, Float, Boolean))
+        self.assert_from_string_fails_except_for(Float, (Integer, Float, Boolean))
+
+        #TODO: I think these should produce errors
+        #self.assert_from_string_error(Integer, "true")
+        #self.assert_from_string_error(Integer, "false")
+        #self.assert_from_string_error(Integer, "1.3456")
+        #self.assert_from_string_error(Float, "true")
+        #self.assert_from_string_error(Float, "false")

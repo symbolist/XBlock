@@ -16,6 +16,7 @@ import pytz
 import traceback
 import warnings
 import json
+import yaml
 
 
 # __all__ controls what classes end up in the docs, and in what order.
@@ -519,6 +520,20 @@ class Field(object):
         if not isinstance(self, JSONField):
             logging.warn("Deprecated. JSONifiable fields should derive from JSONField")
         return value
+
+    def to_string(self, value):
+        """
+        Return a JSON serialized string representation of the value.
+        """
+        return json.dumps(value)
+
+    def from_string(self, serialized):
+        """
+        Returns a native value from a YAML serialized string representation.
+        Since YAML is a superset of JSON, this is the inverse of to_string.)
+        """
+        value = yaml.load(serialized)
+        return self._check_or_enforce_type(value)
 
     def enforce_type(self, value):
         """
