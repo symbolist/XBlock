@@ -618,38 +618,44 @@ class FieldSerializationTest(unittest.TestCase):
         self.assert_to_from_string(Boolean, False, 'false')
         self.assert_to_from_string(Integer, True, 'true')
 
-        self.assert_to_from_string(String, "", '""')
-        self.assert_to_from_string(String, "foo", '"foo"')
-        self.assert_to_from_string(String, "bar", '"bar"')
+        self.assert_to_from_string(String, "", "")
+        self.assert_to_from_string(String, "foo", 'foo')
+        self.assert_to_from_string(String, "bar", 'bar')
 
         self.assert_to_from_string(Dict, {}, '{}')
         self.assert_to_from_string(List, [], '[]')
 
+    def test_proper_indentation_in_dict_and_list(self):
         self.assert_to_from_string(
-            Dict, {"foo":1, "bar":2}, textwrap.dedent("""\
-            {
-              "bar": 2, 
-              "foo": 1
-            }"""))
+            Dict, {"foo": 1, "bar": 2}, (
+                '{\n'
+                '  "bar": 2, \n'
+                '  "foo": 1\n'
+                '}'))
 
         self.assert_to_from_string(
-            List, [1, 2, 3], textwrap.dedent("""\
-            [
-              1, 
-              2, 
-              3
-            ]"""))
+            List, [1, 2, 3], (
+                '[\n'
+                '  1, \n'
+                '  2, \n'
+                '  3\n'
+                ']'))
 
         self.assert_to_from_string(
-            Dict, {"foo":[1, 2, 3], "bar":2}, textwrap.dedent("""\
-            {
-              "bar": 2, 
-              "foo": [
-                1, 
-                2, 
-                3
-              ]
-            }"""))
+            Dict, {"foo": [1, 2, 3], "bar": 2}, (
+                '{\n'
+                '  "bar": 2, \n'
+                '  "foo": [\n'
+                '    1, \n'
+                '    2, \n'
+                '    3\n'
+                '  ]\n'
+                '}'))
+
+    def test_integer_from_other_base_representations(self):
+        self.assert_from_string(Integer, "0xff", 0xff)
+        self.assert_from_string(Integer, "0b01", 1)
+        self.assert_from_string(Integer, "0b10", 2)
 
     def test_float_special_cases(self):
         """Tricky cases of the float field."""
@@ -664,10 +670,53 @@ class FieldSerializationTest(unittest.TestCase):
         self.assert_fuzzy_strings(Float, 1.0, ['1', '1.0'], "1|1\.0*")
         self.assert_fuzzy_strings(Float, -10.0, ['-10', '-10.0'], "-10|-10\.0*")
 
-    def test_boolean_special_cases(self):
+    def test_boolean_fuzzy_cases(self):
         """Tricky cases of the boolean field."""
         self.assert_fuzzy_strings(Boolean, True, ['true', 'TRUE'], "true")
         self.assert_fuzzy_strings(Boolean, False, ['false', 'FALSE'], "false")
+
+    def test_dict_from_yaml(self):
+        self.assert_from_string(Dict, textwrap.dedent("""\
+            foo: 1
+            bar: 2.124
+            baz: True
+            kuu: some string
+        """), {"foo": 1, "bar": 2.124, "baz": True, "kuu": "some string"})
+
+    def test_list_from_yaml(self):
+        self.assert_from_string(List, textwrap.dedent("""\
+            - 1
+            - 2.345
+            - true
+            - false
+            - null
+            - some string
+        """), [1, 2.345, True, False, None, "some string"])
+
+    def test_dict_and_list_from_yaml(self):
+        self.assert_from_string(Dict, textwrap.dedent("""\
+            foo: 1
+            bar: [1, 2, 3]
+        """), {"foo": 1, "bar": [1, 2, 3]})
+
+        self.assert_from_string(Dict, textwrap.dedent("""\
+            foo: 1
+            bar:
+                - 1
+                - 2
+                - meow: true
+                  woof: false
+                  kaw: null
+        """), {"foo": 1, "bar": [1, 2, {"meow": True, "woof": False, "kaw": None}]})
+
+        self.assert_from_string(List, textwrap.dedent("""\
+            - 1
+            - 2.345
+            - {"foo": true, "bar": [1,2,3]}
+            - meow: false
+              woof: true
+              kaw: null
+        """), [1, 2.345, {"foo": True, "bar": [1, 2, 3]}, {"meow": False, "woof": True, "kaw": None}])
 
     def test_from_string_errors(self):
         """ Cases that raises various exceptions."""

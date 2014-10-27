@@ -525,7 +525,7 @@ class Field(object):
         """
         Return a JSON serialized string representation of the value.
         """
-        return json.dumps(value, indent=2, sort_keys=True)
+        return json.dumps(self.to_json(value), indent=2, sort_keys=True)
 
     def from_string(self, serialized):
         """
@@ -728,6 +728,14 @@ class String(JSONField):
             return value
         else:
             raise TypeError('Value stored in a String must be None or a string, found %s' % type(value))
+
+    def from_string(self, value):
+        """String gets serialized and deserialized without quote marks."""
+        return self.from_json(value)
+
+    def to_string(self, value):
+        """String gets serialized and deserialized without quote marks."""
+        return self.to_json(value)
 
     enforce_type = from_json
 

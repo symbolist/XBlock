@@ -5,6 +5,7 @@ This code is in the Runtime layer, because it is authored once by edX
 and used by all runtimes.
 
 """
+import re
 import functools
 import pkg_resources
 try:
@@ -14,8 +15,13 @@ except ImportError:
 from webob import Response
 
 from xblock.exceptions import XBlockSaveError, KeyValueMultiSaveError, JsonHandlerError, DisallowedFileError
-from xblock.fields import ChildrenModelMetaclass, ModelMetaclass, String, List, Scope, Reference
+from xblock.fields import ChildrenModelMetaclass, ModelMetaclass, Field, String, List, Scope, Reference
 from xblock.plugin import Plugin
+
+XML_NAMESPACE = {
+        "option": "http://code.edx.org/xblock/option",
+        "block": "http://code.edx.org/xblock/block",
+}
 
 
 # __all__ controls what classes end up in the docs.
@@ -354,13 +360,33 @@ class XBlock(Plugin):
         """
         block = runtime.construct_xblock_from_class(cls, keys)
 
+        def _break_tag(tag):
+            """
+            Returns the namespace and tag from a tag.
+            Or None and the tag if no namespace is found.
+            """
+            m = re.match("\{(.*)\}(.*)", tag)  # {namespace}tag
+            return m.groups() if m is not None else (None, tag)
+
         # The base implementation: child nodes become child blocks.
+        # Or fields, if they belong to the right namespace.
         for child in node:
-            block.runtime.add_node_as_child(block, child, id_generator)
+            ns, tag = _break_tag(child.tag)
+            if ns == XML_NAMESPACE["option"]:
+                value = child.text
+                if tag in block.fields:
+                    value = block.fields[tag].tostring(value)
+                setattr(block, tag, value)
+            else:
+                block.runtime.add_node_as_child(block, child, id_generator)
 
         # Attributes become fields.
-        for name, value in node.items():
+        for name, text in node.items():
             if name in block.fields:
+                value = text
+                field = getattr(block.__class__, name)
+                if isinstance(field, Field):
+                    value = field.to_string(value)
                 setattr(block, name, value)
 
         # Text content becomes "content", if such a field exists.
