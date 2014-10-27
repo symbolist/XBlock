@@ -19,8 +19,8 @@ from xblock.fields import ChildrenModelMetaclass, ModelMetaclass, Field, String,
 from xblock.plugin import Plugin
 
 XML_NAMESPACES = {
-        "option": "http://code.edx.org/xblock/option",
-        "block": "http://code.edx.org/xblock/block",
+    "option": "http://code.edx.org/xblock/option",
+    "block": "http://code.edx.org/xblock/block",
 }
 
 
@@ -381,12 +381,8 @@ class XBlock(Plugin):
                 block.runtime.add_node_as_child(block, child, id_generator)
 
         # Attributes become fields.
-        for name, text in node.items():
+        for name, value in node.items():
             if name in block.fields:
-                value = text
-                field = getattr(block.__class__, name)
-                if isinstance(field, Field):
-                    value = field.from_string(value)
                 setattr(block, name, value)
 
         # Text content becomes "content", if such a field exists.
@@ -414,22 +410,39 @@ class XBlock(Plugin):
                 return 0
             return 1 + _depth(parent)
 
-        def _ident(string, depth, tab="  "):
-            """Ident all lines of the given string by depth, except the first"""
-            prefix = tab * depth
-            return "\n".join(prefix + line for i, line in enumerate(string.split("\n"))).strip()
+        def _indent(string, depth):
+            """Indent all lines of the given string except the first.
+            Also remove trailing whitespace.
+            """
+            indent = "  " * depth
+            string = "\n".join(indent + l for l in string.splitlines())
+            return string.strip()
+
+        def _indent_as_child(string, node):
+            """Indent text content to be a visually pleasing child of node."""
+            return _indent(string, _depth(node) + 1)
+
+        def _add_field(node, field):
+            """Add xml representation of field to node.
+
+            Depending on settings, it either stores the value of field
+            as an xml attribute or creates a separate child node.
+            """
+            if field.serialize_as_node:
+                tag = "{%s}%s" % (XML_NAMESPACES["option"], field_name)
+                text = field.to_string(field.read_from(self))
+                elem = node.makeelement(tag)
+                elem.text = _indent_as_child(text, node)
+                node.insert(0, elem)
+            else:
+                node.set(field_name, unicode(field.read_from(self)))
 
         # Set node attributes based on our fields.
         for field_name, field in self.fields.items():
             if field_name in ('children', 'parent', 'content'):
                 continue
             if field.is_set_on(self):
-                if field.serialize_as_node:
-                    elem = node.makeelement("{%s}%s" % (XML_NAMESPACES["option"], field_name))
-                    elem.text = _ident(field.to_string(field.read_from(self)), _depth(node) + 1)
-                    node.insert(0, elem)
-                else:
-                    node.set(field_name, unicode(field.read_from(self)))
+                _add_field(node, field)
 
         # Add children for each of our children.
         if self.has_children:

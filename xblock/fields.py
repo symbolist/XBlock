@@ -534,7 +534,9 @@ class Field(object):
         """
         Return a JSON serialized string representation of the value.
         """
-        return json.dumps(self.to_json(value), indent=2, sort_keys=True)
+        value = json.dumps(self.to_json(value), indent=2, sort_keys=True)
+        value = "\n".join(line.rstrip() for line in value.splitlines())
+        return value
 
     def from_string(self, serialized):
         """

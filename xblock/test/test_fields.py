@@ -627,30 +627,30 @@ class FieldSerializationTest(unittest.TestCase):
 
     def test_proper_indentation_in_dict_and_list(self):
         self.assert_to_from_string(
-            Dict, {"foo": 1, "bar": 2}, (
-                '{\n'
-                '  "bar": 2, \n'
-                '  "foo": 1\n'
-                '}'))
+            Dict, {"foo": 1, "bar": 2}, textwrap.dedent("""\
+                {
+                  "bar": 2,
+                  "foo": 1
+                }"""))
 
         self.assert_to_from_string(
-            List, [1, 2, 3], (
-                '[\n'
-                '  1, \n'
-                '  2, \n'
-                '  3\n'
-                ']'))
+            List, [1, 2, 3], textwrap.dedent("""\
+                [
+                  1,
+                  2,
+                  3
+                ]"""))
 
         self.assert_to_from_string(
-            Dict, {"foo": [1, 2, 3], "bar": 2}, (
-                '{\n'
-                '  "bar": 2, \n'
-                '  "foo": [\n'
-                '    1, \n'
-                '    2, \n'
-                '    3\n'
-                '  ]\n'
-                '}'))
+            Dict, {"foo": [1, 2, 3], "bar": 2}, textwrap.dedent("""\
+                {
+                  "bar": 2,
+                  "foo": [
+                    1,
+                    2,
+                    3
+                  ]
+                }"""))
 
     def test_integer_from_other_base_representations(self):
         self.assert_from_string(Integer, "0xff", 0xff)
@@ -726,17 +726,5 @@ class FieldSerializationTest(unittest.TestCase):
         self.assert_from_string_error(Float, "1.abc")
         self.assert_from_string_error(Float, "defg")
 
-        #TODO: this should be a bit more strict
-        #self.assert_from_string_fails_except_for(Integer, (Integer,))
-        #self.assert_from_string_fails_except_for(Float, (Integer, Float))
-        #self.assert_from_string_fails_except_for(Boolean, (Boolean, ))
         self.assert_from_string_fails_except_for(Integer, (Integer, Float, Boolean))
         self.assert_from_string_fails_except_for(Float, (Integer, Float, Boolean))
-        #self.assert_from_string_fails_except_for(Boolean, (Integer, Float, Boolean))
-
-        #TODO: I think these should produce errors
-        #self.assert_from_string_error(Integer, "true")
-        #self.assert_from_string_error(Integer, "false")
-        #self.assert_from_string_error(Integer, "1.3456")
-        #self.assert_from_string_error(Float, "true")
-        #self.assert_from_string_error(Float, "false")

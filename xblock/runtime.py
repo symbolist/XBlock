@@ -24,6 +24,7 @@ from xblock.exceptions import (
 )
 from xblock.core import XBlock, XML_NAMESPACES
 
+
 class KeyValueStore(object):
     """The abstract interface for Key Value Stores."""
 

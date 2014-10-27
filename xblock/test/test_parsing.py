@@ -6,7 +6,7 @@ import StringIO
 import textwrap
 import unittest
 
-from xblock.core import XBlock
+from xblock.core import XBlock, XML_NAMESPACES
 from xblock.fields import Scope, String, Integer, Dict, List
 from xblock.test.tools import blocks_are_equivalent
 from xblock.test.toy_runtime import ToyRuntime
@@ -210,20 +210,25 @@ class ExportTest(XmlTest, unittest.TestCase):
         self.assertTrue(blocks_are_equivalent(block, block_imported))
 
     @XBlock.register_temp_plugin(LeafWithOption)
-    def test_export_format_for_options(self):
-        xml = (
-            "<?xml version='1.0' encoding='UTF8'?>\n"
-            '<leafwithoption xmlns:option="http://code.edx.org/xblock/option" xmlns:block="http://code.edx.org/xblock/block">\n'
-            '  <option:data3>{\n'
-            '    "child": 1, \n'
-            '    "with custom option": true\n'
-            '  }</option:data3>\n'
-            '  <option:data4>[\n'
-            '    1.23, \n'
-            '    true, \n'
-            '    "some string"\n'
-            '  ]</option:data4>\n'
-            '</leafwithoption>\n')
+    def test_dict_and_list_export_format(self):
+        namespace_attrs = " ".join(
+            'xmlns:{}="{}"'.format(k, v)
+            for k, v in XML_NAMESPACES.items())
+
+        xml = textwrap.dedent("""\
+            <?xml version='1.0' encoding='UTF8'?>
+            <leafwithoption %s>
+              <option:data3>{
+                "child": 1,
+                "with custom option": true
+              }</option:data3>
+              <option:data4>[
+                1.23,
+                true,
+                "some string"
+              ]</option:data4>
+            </leafwithoption>
+            """) % namespace_attrs
         block = self.parse_xml_to_block(xml)
         exported_xml = self.export_xml_for_block(block)
 
