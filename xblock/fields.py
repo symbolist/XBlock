@@ -279,6 +279,9 @@ class Field(object):
             possible to convert it. This provides a guarantee on the stored
             value type.
 
+        serialize_as_node: if set, the field will be serialized as a
+            separate node instead of an xml attribute (default: False).
+
         kwargs: optional runtime-specific options/metadata. Will be stored as
             runtime_options.
 
@@ -289,7 +292,8 @@ class Field(object):
     # We're OK redefining built-in `help`
     # pylint: disable=W0622
     def __init__(self, help=None, default=UNSET, scope=Scope.content,
-                 display_name=None, values=None, enforce_type=False, **kwargs):
+                 display_name=None, values=None, enforce_type=False,
+                 serialize_as_node=False, **kwargs):
         self._name = "unknown"
         self.help = help
         self._enable_enforce_type = enforce_type
@@ -299,7 +303,12 @@ class Field(object):
         self._display_name = display_name
         self._values = values
         self.runtime_options = kwargs
+        self._serialize_as_node = serialize_as_node
     # pylint: enable=W0622
+
+    @property
+    def serialize_as_node(self):
+        return self._serialize_as_node
 
     @property
     def default(self):

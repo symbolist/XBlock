@@ -18,7 +18,7 @@ from xblock.exceptions import XBlockSaveError, KeyValueMultiSaveError, JsonHandl
 from xblock.fields import ChildrenModelMetaclass, ModelMetaclass, Field, String, List, Scope, Reference
 from xblock.plugin import Plugin
 
-XML_NAMESPACE = {
+XML_NAMESPACES = {
         "option": "http://code.edx.org/xblock/option",
         "block": "http://code.edx.org/xblock/block",
 }
@@ -372,7 +372,7 @@ class XBlock(Plugin):
         # Or fields, if they belong to the right namespace.
         for child in node:
             ns, tag = _break_tag(child.tag)
-            if ns == XML_NAMESPACE["option"]:
+            if ns == XML_NAMESPACES["option"]:
                 value = child.text
                 if tag in block.fields:
                     value = block.fields[tag].from_string(value)
@@ -407,12 +407,29 @@ class XBlock(Plugin):
         # Set node.tag based on our class name.
         node.tag = self.xml_element_name()
 
+        def _depth(node):
+            """Get the depth of the node relative to the root node"""
+            parent = node.getparent()
+            if parent is None:
+                return 0
+            return 1 + _depth(parent)
+
+        def _ident(string, depth, tab="  "):
+            """Ident all lines of the given string by depth, except the first"""
+            prefix = tab * depth
+            return "\n".join(prefix + line for i, line in enumerate(string.split("\n"))).strip()
+
         # Set node attributes based on our fields.
         for field_name, field in self.fields.items():
             if field_name in ('children', 'parent', 'content'):
                 continue
             if field.is_set_on(self):
-                node.set(field_name, unicode(field.read_from(self)))
+                if field.serialize_as_node:
+                    elem = node.makeelement("{%s}%s" % (XML_NAMESPACES["option"], field_name))
+                    elem.text = _ident(field.to_string(field.read_from(self)), _depth(node) + 1)
+                    node.insert(0, elem)
+                else:
+                    node.set(field_name, unicode(field.read_from(self)))
 
         # Add children for each of our children.
         if self.has_children:

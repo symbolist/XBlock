@@ -22,8 +22,7 @@ from xblock.exceptions import (
     NoSuchUsage,
     NoSuchDefinition,
 )
-from xblock.core import XBlock
-
+from xblock.core import XBlock, XML_NAMESPACES
 
 class KeyValueStore(object):
     """The abstract interface for Key Value Stores."""
@@ -543,10 +542,10 @@ class Runtime(object):
         """
         Export the block to XML, writing the XML to `xmlfile`.
         """
-        root = etree.Element("unknown_root")
+        root = etree.Element("unknown_root", nsmap=XML_NAMESPACES)
         tree = etree.ElementTree(root)
         block.add_xml_to_node(root)
-        tree.write(xmlfile, xml_declaration=True, encoding="utf8")
+        tree.write(xmlfile, xml_declaration=True, pretty_print=True, encoding="utf8")
 
     def add_block_as_child_node(self, block, node):
         """

@@ -23,8 +23,12 @@ class Leaf(XBlock):
 
 class LeafWithOption(Leaf):
     """A leaf with an additional option set via xml attribute."""
-    data3 = Dict(default={"default": True}, scope=Scope.user_state, enforce_type=True, xml_repr='node')
-    data4 = List(default=[1,2,3], scope=Scope.user_state, enforce_type=True, xml_repr='node')
+    data3 = Dict(
+        default={}, scope=Scope.user_state, enforce_type=True,
+        serialize_as_node=True)
+    data4 = List(
+        default=[], scope=Scope.user_state, enforce_type=True,
+        serialize_as_node=True)
 
 
 class Container(XBlock):
@@ -138,9 +142,9 @@ class ExportTest(XmlTest, unittest.TestCase):
     def test_dead_simple_export(self):
         block = self.parse_xml_to_block("<leaf/>")
         xml = self.export_xml_for_block(block)
-        self.assertEqual(
+        self.assertRegexpMatches(
             xml.strip(),
-            "<?xml version='1.0' encoding='UTF8'?>\n<leaf/>"
+            "\<\?xml version='1.0' encoding='UTF8'\?\>\n\<leaf .*/\>"
         )
 
     @XBlock.register_temp_plugin(Leaf)
@@ -204,6 +208,28 @@ class ExportTest(XmlTest, unittest.TestCase):
 
         self.assertEqual(xml.count("child1"), 1)
         self.assertTrue(blocks_are_equivalent(block, block_imported))
+
+    @XBlock.register_temp_plugin(LeafWithOption)
+    def test_export_format_for_options(self):
+        xml = (
+            "<?xml version='1.0' encoding='UTF8'?>\n"
+            '<leafwithoption xmlns:option="http://code.edx.org/xblock/option" xmlns:block="http://code.edx.org/xblock/block">\n'
+            '  <option:data3>{\n'
+            '    "child": 1, \n'
+            '    "with custom option": true\n'
+            '  }</option:data3>\n'
+            '  <option:data4>[\n'
+            '    1.23, \n'
+            '    true, \n'
+            '    "some string"\n'
+            '  ]</option:data4>\n'
+            '</leafwithoption>\n')
+        block = self.parse_xml_to_block(xml)
+        exported_xml = self.export_xml_for_block(block)
+
+        print(xml)
+        print(exported_xml)
+        self.assertEqual(xml, exported_xml)
 
 
 def squish(text):
