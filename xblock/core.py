@@ -375,7 +375,7 @@ class XBlock(Plugin):
             if ns == XML_NAMESPACE["option"]:
                 value = child.text
                 if tag in block.fields:
-                    value = block.fields[tag].tostring(value)
+                    value = block.fields[tag].from_string(value)
                 setattr(block, tag, value)
             else:
                 block.runtime.add_node_as_child(block, child, id_generator)
@@ -386,7 +386,7 @@ class XBlock(Plugin):
                 value = text
                 field = getattr(block.__class__, name)
                 if isinstance(field, Field):
-                    value = field.to_string(value)
+                    value = field.from_string(value)
                 setattr(block, name, value)
 
         # Text content becomes "content", if such a field exists.

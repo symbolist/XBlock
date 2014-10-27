@@ -7,7 +7,7 @@ import textwrap
 import unittest
 
 from xblock.core import XBlock
-from xblock.fields import Scope, String, Integer
+from xblock.fields import Scope, String, Integer, Dict, List
 from xblock.test.tools import blocks_are_equivalent
 from xblock.test.toy_runtime import ToyRuntime
 
@@ -19,6 +19,12 @@ class Leaf(XBlock):
     data1 = String(default="default_value", scope=Scope.user_state)
     data2 = String(default="default_value", scope=Scope.user_state)
     content = String(default="", scope=Scope.content)
+
+
+class LeafWithOption(Leaf):
+    """A leaf with an additional option set via xml attribute."""
+    data3 = Dict(default={"default": True}, scope=Scope.user_state, enforce_type=True, xml_repr='node')
+    data4 = List(default=[1,2,3], scope=Scope.user_state, enforce_type=True, xml_repr='node')
 
 
 class Container(XBlock):
@@ -168,6 +174,35 @@ class ExportTest(XmlTest, unittest.TestCase):
 
         # The important part: exporting then importing a block should give
         # you an equivalent block.
+        self.assertTrue(blocks_are_equivalent(block, block_imported))
+
+    @XBlock.register_temp_plugin(LeafWithOption)
+    def test_export_then_import_with_options(self):
+        block = self.parse_xml_to_block(textwrap.dedent("""\
+            <?xml version='1.0' encoding='utf-8'?>
+            <leafwithoption xmlns:option="http://code.edx.org/xblock/option"
+                data1="child1" data2='with a dict'>
+                <option:data3>
+                    child: 1
+                    with custom option: True
+                </option:data3>
+                <option:data4>
+                    - 1.23
+                    - true
+                    - some string
+                </option:data4>
+            </leafwithoption>
+            """))
+        xml = self.export_xml_for_block(block)
+
+        print repr(xml)   # so if the test fails, we can see it.
+
+        block_imported = self.parse_xml_to_block(xml)
+
+        self.assertEqual(block_imported.data3, {"child": 1, "with custom option": True})
+        self.assertEqual(block_imported.data4, [1.23, True, "some string"])
+
+        self.assertEqual(xml.count("child1"), 1)
         self.assertTrue(blocks_are_equivalent(block, block_imported))
 
 
