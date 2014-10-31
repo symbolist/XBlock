@@ -13,7 +13,10 @@ import pytz
 import warnings
 import math
 import textwrap
+import itertools
 from contextlib import contextmanager
+
+import ddt
 
 from xblock.core import XBlock, Scope
 from xblock.field_data import DictFieldData
@@ -553,26 +556,11 @@ class SentinelTest(unittest.TestCase):
         self.assertNotIn('base', a_dict)
 
 
+@ddt.ddt
 class FieldSerializationTest(unittest.TestCase):
     """
     Tests field.from_string and field.to_string methods.
     """
-
-    def assert_from_string_fails_except_for(self, type_under_test, types):
-        tests = {
-            Integer: "10", Float: "1.34562", Boolean: "true",
-            Dict: '{"foo":"bar"}', List: '[1, 2, 3]', String: '"baz"',
-        }
-        for t in types:
-            tests.pop(t)
-
-        for serialized in tests.values():
-            try:
-                self.assert_from_string_error(type_under_test, serialized)
-            except AssertionError as e:
-                e.args += ("Tried to load from:", serialized)
-                raise
-
     def assert_to_string(self, _type, value, string):
         result = _type(enforce_type=True).to_string(value)
         self.assertEquals(result, string)
@@ -581,125 +569,92 @@ class FieldSerializationTest(unittest.TestCase):
         result = _type(enforce_type=True).from_string(string)
         self.assertEquals(result, value)
 
-    def assert_to_from_string(self, _type, value, string):
+    @ddt.unpack
+    @ddt.data(
+        (Integer, 0, '0'),
+        (Integer, 5, '5'),
+        (Integer, -1023, '-1023'),
+        (Integer, 12345678, "12345678"),
+        (Float, 5.321, '5.321'),
+        (Float, -1023.35, '-1023.35'),
+        (Float, 1e+100, '1e+100'),
+        (Float, float('inf'), 'Infinity'),
+        (Float, float('-inf'), '-Infinity'),
+        (Boolean, True, "true"),
+        (Boolean, False, "false"),
+        (Integer, True, 'true'),
+        (String, "", ""),
+        (String, "foo", 'foo'),
+        (String, "bar", 'bar'),
+        (Dict, {}, '{}'),
+        (List, [], '[]'),
+        (Dict, {"foo": 1, "bar": 2}, textwrap.dedent("""\
+            {
+              "bar": 2,
+              "foo": 1
+            }""")),
+        (List, [1, 2, 3], textwrap.dedent("""\
+            [
+              1,
+              2,
+              3
+            ]""")),
+        (Dict, {"foo": [1, 2, 3], "bar": 2}, textwrap.dedent("""\
+            {
+              "bar": 2,
+              "foo": [
+                1,
+                2,
+                3
+              ]
+            }""")))
+    def test_both_directions(self, _type, value, string):
+        """Easy cases that work in both directions."""
         self.assert_to_string(_type, value, string)
         self.assert_from_string(_type, string, value)
 
-    def assert_to_string_regexp(self, _type, value, re):
+    @ddt.unpack
+    @ddt.data(
+        (Float, 0.0, "0|0\.0*"),
+        (Float, 1.0, "1|1\.0*"),
+        (Float, -10.0, "-10|-10\.0*"))
+    def test_to_string_regexp_matches(self, _type, value, regexp):
         result = _type(enforce_type=True).to_string(value)
-        self.assertRegexpMatches(result, re)
+        self.assertRegexpMatches(result, regexp)
 
-    def assert_from_string_error(self, _type, string):
-        with self.assertRaises(StandardError):
-            _type(enforce_type=True).from_string(string)
-
-    def assert_fuzzy_strings(self, _type, value, strings, re):
-        """
-        Asserts that every element of `strings` is converted to `value`,
-        and converting `value` results in a string that matches `re`.
-        """
-        for string in strings:
-            self.assert_from_string(Float, string, value)
-        self.assert_to_string_regexp(Float, value, re)
-
-    def test_both_directions(self):
-        """Easy cases that work in both directions."""
-        self.assert_to_from_string(Integer, 0, '0')
-        self.assert_to_from_string(Integer, 5, '5')
-        self.assert_to_from_string(Integer, -1023, '-1023')
-        self.assert_to_from_string(Integer, 12345678, "12345678")
-
-        self.assert_to_from_string(Float, 5.321, '5.321')
-        self.assert_to_from_string(Float, -1023.35, '-1023.35')
-        self.assert_to_from_string(Float, 1e+100, '1e+100')
-        self.assert_to_from_string(Float, float('inf'), 'Infinity')
-        self.assert_to_from_string(Float, float('-inf'), '-Infinity')
-
-        self.assert_to_from_string(Boolean, False, 'false')
-        self.assert_to_from_string(Integer, True, 'true')
-
-        self.assert_to_from_string(String, "", "")
-        self.assert_to_from_string(String, "foo", 'foo')
-        self.assert_to_from_string(String, "bar", 'bar')
-
-        self.assert_to_from_string(Dict, {}, '{}')
-        self.assert_to_from_string(List, [], '[]')
-
-    def test_proper_indentation_in_dict_and_list(self):
-        self.assert_to_from_string(
-            Dict, {"foo": 1, "bar": 2}, textwrap.dedent("""\
-                {
-                  "bar": 2,
-                  "foo": 1
-                }"""))
-
-        self.assert_to_from_string(
-            List, [1, 2, 3], textwrap.dedent("""\
-                [
-                  1,
-                  2,
-                  3
-                ]"""))
-
-        self.assert_to_from_string(
-            Dict, {"foo": [1, 2, 3], "bar": 2}, textwrap.dedent("""\
-                {
-                  "bar": 2,
-                  "foo": [
-                    1,
-                    2,
-                    3
-                  ]
-                }"""))
-
-    def test_integer_from_other_base_representations(self):
-        self.assert_from_string(Integer, "0xff", 0xff)
-        self.assert_from_string(Integer, "0b01", 1)
-        self.assert_from_string(Integer, "0b10", 2)
-
-    def test_float_special_cases(self):
-        """Tricky cases of the float field."""
-
-        def _assert_from_string_is_nan(_type, string):
-            result = _type(enforce_type=True).from_string(string)
-            self.assertTrue(math.isnan(result))
-
-        _assert_from_string_is_nan(Float, 'NaN')
-
-        self.assert_fuzzy_strings(Float, 0.0, ['0', '0.0'], "0|0\.0*")
-        self.assert_fuzzy_strings(Float, 1.0, ['1', '1.0'], "1|1\.0*")
-        self.assert_fuzzy_strings(Float, -10.0, ['-10', '-10.0'], "-10|-10\.0*")
-
-    def test_boolean_fuzzy_cases(self):
-        """Tricky cases of the boolean field."""
-        self.assert_fuzzy_strings(Boolean, True, ['true', 'TRUE'], "true")
-        self.assert_fuzzy_strings(Boolean, False, ['false', 'FALSE'], "false")
-
-    def test_dict_from_yaml(self):
-        self.assert_from_string(Dict, textwrap.dedent("""\
+    @ddt.unpack
+    @ddt.data(
+        (Integer, "0xff", 0xff),
+        (Integer, "0b01", 1),
+        (Integer, "0b10", 2),
+        (Float, '0', 0.0),
+        (Float, '0.0', 0.0),
+        (Float, '-10', -10.0),
+        (Float, '-10.0', -10.0),
+        (Boolean, 'TRUE', True),
+        (Boolean, 'FALSE', False),
+        (Dict, textwrap.dedent("""\
             foo: 1
             bar: 2.124
             baz: True
             kuu: some string
-        """), {"foo": 1, "bar": 2.124, "baz": True, "kuu": "some string"})
-
-    def test_list_from_yaml(self):
-        self.assert_from_string(List, textwrap.dedent("""\
+            """),
+            {"foo": 1, "bar": 2.124, "baz": True, "kuu": "some string"}),
+        (List, textwrap.dedent("""\
             - 1
             - 2.345
             - true
             - false
             - null
             - some string
-        """), [1, 2.345, True, False, None, "some string"])
-
-    def test_dict_and_list_from_yaml(self):
-        self.assert_from_string(Dict, textwrap.dedent("""\
+            """),
+            [1, 2.345, True, False, None, "some string"]),
+        (Dict, textwrap.dedent("""\
             foo: 1
             bar: [1, 2, 3]
-        """), {"foo": 1, "bar": [1, 2, 3]})
-
-        self.assert_from_string(Dict, textwrap.dedent("""\
+            """),
+            {"foo": 1, "bar": [1, 2, 3]}),
+        (Dict, textwrap.dedent("""\
             foo: 1
             bar:
                 - 1
@@ -707,24 +662,34 @@ class FieldSerializationTest(unittest.TestCase):
                 - meow: true
                   woof: false
                   kaw: null
-        """), {"foo": 1, "bar": [1, 2, {"meow": True, "woof": False, "kaw": None}]})
-
-        self.assert_from_string(List, textwrap.dedent("""\
+            """),
+            {"foo": 1, "bar": [1, 2, {"meow": True, "woof": False, "kaw": None}]}),
+        (List, textwrap.dedent("""\
             - 1
             - 2.345
             - {"foo": true, "bar": [1,2,3]}
             - meow: false
               woof: true
               kaw: null
-        """), [1, 2.345, {"foo": True, "bar": [1, 2, 3]}, {"meow": False, "woof": True, "kaw": None}])
+            """),
+            [1, 2.345, {"foo": True, "bar": [1, 2, 3]}, {"meow": False, "woof": True, "kaw": None}]))
+    def test_from_string(self, _t, string, value):
+        self.assert_from_string(_t, string, value)
 
-    def test_from_string_errors(self):
+    def test_float_from_NaN_is_nan(self):
+        """Test parsing of NaN.
+
+        This special test case is necessary since
+        float('nan') compares inequal to everything.
+        """
+        result = Float(enforce_type=True).from_string('NaN')
+        self.assertTrue(math.isnan(result))
+
+    @ddt.unpack
+    @ddt.data(*itertools.product(
+        [Integer, Float],
+        ['{"foo":"bar"}', '[1, 2, 3]', 'baz', '1.abc', 'defg']))
+    def test_from_string_errors(self, _type, string):
         """ Cases that raises various exceptions."""
-
-        self.assert_from_string_error(Integer, "1.abc")
-        self.assert_from_string_error(Integer, "defg")
-        self.assert_from_string_error(Float, "1.abc")
-        self.assert_from_string_error(Float, "defg")
-
-        self.assert_from_string_fails_except_for(Integer, (Integer, Float, Boolean))
-        self.assert_from_string_fails_except_for(Float, (Integer, Float, Boolean))
+        with self.assertRaises(StandardError):
+            _type(enforce_type=True).from_string(string)
