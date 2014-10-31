@@ -507,6 +507,15 @@ class Field(object):
     def __repr__(self):
         return "<{0.__class__.__name__} {0._name}>".format(self)
 
+    def _warn_deprecated_outside_JSONField(self):
+        """Certain methods will be moved to JSONField.
+
+        This warning marks calls when the object is not
+        derived from that class.
+        """
+        if not isinstance(self, JSONField):
+            logging.warn("Deprecated. JSONifiable fields should derive from JSONField")
+
     def to_json(self, value):
         """
         Return value in the form of nested lists and dictionaries (suitable
@@ -515,8 +524,7 @@ class Field(object):
         This is called during field writes to convert the native python
         type to the value stored in the database
         """
-        if not isinstance(self, JSONField):
-            logging.warn("Deprecated. JSONifiable fields should derive from JSONField")
+        self._warn_deprecated_outside_JSONField()
         return value
 
     def from_json(self, value):
@@ -526,16 +534,17 @@ class Field(object):
         Called during field reads to convert the stored value into a full featured python
         object
         """
-        if not isinstance(self, JSONField):
-            logging.warn("Deprecated. JSONifiable fields should derive from JSONField")
+        self._warn_deprecated_outside_JSONField()
         return value
 
     def to_string(self, value):
         """
         Return a JSON serialized string representation of the value.
         """
-        value = json.dumps(self.to_json(value), indent=2, sort_keys=True)
-        value = "\n".join(line.rstrip() for line in value.splitlines())
+        self._warn_deprecated_outside_JSONField()
+        value = json.dumps(
+            self.to_json(value), indent=2,
+            sort_keys=True, separators=(',', ': '))
         return value
 
     def from_string(self, serialized):
@@ -543,7 +552,8 @@ class Field(object):
         Returns a native value from a YAML serialized string representation.
         Since YAML is a superset of JSON, this is the inverse of to_string.)
         """
-        value = yaml.load(serialized)
+        self._warn_deprecated_outside_JSONField()
+        value = yaml.safe_load(serialized)
         return self._check_or_enforce_type(value)
 
     def enforce_type(self, value):
@@ -568,8 +578,7 @@ class Field(object):
         """
         Retrieve the serialized value for this field from the specified xblock
         """
-        if not isinstance(self, JSONField):
-            logging.warn("Deprecated. JSONifiable fields should derive from JSONField")
+        self._warn_deprecated_outside_JSONField()
         return self.to_json(self.read_from(xblock))
 
     def write_to(self, xblock, value):

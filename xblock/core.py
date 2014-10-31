@@ -5,7 +5,6 @@ This code is in the Runtime layer, because it is authored once by edX
 and used by all runtimes.
 
 """
-import re
 import functools
 import pkg_resources
 try:
@@ -13,6 +12,7 @@ try:
 except ImportError:
     import json
 from webob import Response
+from lxml import etree
 
 from xblock.exceptions import XBlockSaveError, KeyValueMultiSaveError, JsonHandlerError, DisallowedFileError
 from xblock.fields import ChildrenModelMetaclass, ModelMetaclass, Field, String, List, Scope, Reference
@@ -360,18 +360,13 @@ class XBlock(Plugin):
         """
         block = runtime.construct_xblock_from_class(cls, keys)
 
-        def _break_tag(tag):
-            """
-            Returns the namespace and tag from a tag.
-            Or None and the tag if no namespace is found.
-            """
-            m = re.match("\{(.*)\}(.*)", tag)  # {namespace}tag
-            return m.groups() if m is not None else (None, tag)
-
         # The base implementation: child nodes become child blocks.
         # Or fields, if they belong to the right namespace.
         for child in node:
-            ns, tag = _break_tag(child.tag)
+            qn = etree.QName(child)
+            tag = qn.localname
+            ns = qn.namespace
+
             if ns == XML_NAMESPACES["option"]:
                 value = child.text
                 if tag in block.fields:
@@ -422,7 +417,7 @@ class XBlock(Plugin):
             """Indent text content to be a visually pleasing child of node."""
             return _indent(string, _depth(node) + 1)
 
-        def _add_field(node, field):
+        def _add_field(node, field_name, field):
             """Add xml representation of field to node.
 
             Depending on settings, it either stores the value of field
@@ -442,7 +437,7 @@ class XBlock(Plugin):
             if field_name in ('children', 'parent', 'content'):
                 continue
             if field.is_set_on(self):
-                _add_field(node, field)
+                _add_field(node, field_name, field)
 
         # Add children for each of our children.
         if self.has_children:
