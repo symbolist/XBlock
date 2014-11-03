@@ -21,6 +21,12 @@ class Leaf(XBlock):
     content = String(default="", scope=Scope.content)
 
 
+class LeafWithDictAndList(XBlock):
+    """A leaf containing dict and list options."""
+    dictionary = Dict(default={"default": True}, scope=Scope.user_state)
+    sequence = List(default=[1, 2, 3], scope=Scope.user_state)
+
+
 class LeafWithOption(Leaf):
     """A leaf with an additional option set via xml attribute."""
     data3 = Dict(
@@ -179,6 +185,18 @@ class ExportTest(XmlTest, unittest.TestCase):
         # The important part: exporting then importing a block should give
         # you an equivalent block.
         self.assertTrue(blocks_are_equivalent(block, block_imported))
+
+    @XBlock.register_temp_plugin(LeafWithDictAndList)
+    def test_dict_and_list_as_attribute(self):
+        block = self.parse_xml_to_block(textwrap.dedent("""\
+            <?xml version='1.0' encoding='utf-8'?>
+            <leafwithdictandlist
+                dictionary='{"foo": "bar"}'
+                sequence='["one", "two", "three"]' />
+            """))
+
+        self.assertEquals(block.dictionary, {"foo": "bar"})
+        self.assertEquals(block.sequence, ["one", "two", "three"])
 
     @XBlock.register_temp_plugin(LeafWithOption)
     def test_export_then_import_with_options(self):

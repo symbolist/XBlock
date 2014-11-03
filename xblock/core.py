@@ -360,6 +360,12 @@ class XBlock(Plugin):
         """
         block = runtime.construct_xblock_from_class(cls, keys)
 
+        def _set_field_from_string_if_present(block, name, value):
+            """Sets the field block.name, if block have such a field."""
+            if name in block.fields:
+                value = block.fields[name].from_string(value)
+                setattr(block, name, value)
+
         # The base implementation: child nodes become child blocks.
         # Or fields, if they belong to the right namespace.
         for child in node:
@@ -368,17 +374,13 @@ class XBlock(Plugin):
             ns = qn.namespace
 
             if ns == XML_NAMESPACES["option"]:
-                value = child.text
-                if tag in block.fields:
-                    value = block.fields[tag].from_string(value)
-                setattr(block, tag, value)
+                _set_field_from_string_if_present(block, tag, child.text)
             else:
                 block.runtime.add_node_as_child(block, child, id_generator)
 
         # Attributes become fields.
         for name, value in node.items():
-            if name in block.fields:
-                setattr(block, name, value)
+            _set_field_from_string_if_present(block, name, value)
 
         # Text content becomes "content", if such a field exists.
         if "content" in block.fields and block.fields["content"].scope == Scope.content:
