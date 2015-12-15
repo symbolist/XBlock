@@ -29,7 +29,7 @@ hesitate to ask for help. You can either:
 
 * Subscribe to the `edx-code@ mailing list <https://groups.google.com/forum/#!forum/edx-code>`_
   (be sure to search for your question first before posting!)
-* Join the Slack channel <https://open.edx.org/blog/open-edx-slack>`_
+* Join the `Slack channel <https://open.edx.org/blog/open-edx-slack>`_
 
 Installing XBlock SDK
 ---------------------
