@@ -27,9 +27,9 @@ Getting help
 If you get stuck, or have any question, and can't find the answer in this documentation, don't
 hesitate to ask for help. You can either:
 
-* Subscribe to the `edx-xblock@ mailing list <https://groups.google.com/forum/#!forum/edx-xblock>`_
+* Subscribe to the `edx-code@ mailing list <https://groups.google.com/forum/#!forum/edx-code>`_
   (be sure to search for your question first before posting!)
-* Join the `#edx-code IRC channel on Freenode <http://webchat.freenode.net/?channels=edx-code>`_
+* Join the Slack channel <https://open.edx.org/blog/open-edx-slack>`_
 
 Installing XBlock SDK
 ---------------------
