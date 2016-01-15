@@ -66,9 +66,9 @@ like this:
 Creating a new XBlock
 ---------------------
 
-The simplest way to get started on a new XBlock is to use the ``script/startnew.py`` script from the
-``xblock-sdk`` repo. It asks for the name of your XBlock and creates a new folder containing a
-working barebones XBlock with heavily commented code and all the required boilerplate.
+The simplest way to get started on a new XBlock is to use the ``bin/workbench-make-xblock`` script
+from the ``xblock-sdk`` repo. It asks for the name of your XBlock and creates a new folder
+containing a working barebones XBlock with heavily commented code and all the required boilerplate.
 
 For this tutorial however, we will be creating our custom XBlock manually.
 
@@ -193,9 +193,9 @@ Static files
 ------------
 
 To load static resources, we are using Python's `pkg_resources module
-<http://pythonhosted.org/distribute/pkg_resources.html>`_. The default directory structure makes use
-of individual ``css``, ``html``, and ``js`` folders. This structure is not mandatory though, each
-XBlock can choose its own, as long as it specifies the correct paths in the call to
+<http://pythonhosted.org/setuptools/pkg_resources.html>`_.  The default directory structure makes
+use of individual ``css``, ``html``, and ``js`` folders. This structure is not mandatory though,
+each XBlock can choose its own, as long as it specifies the correct paths in the call to
 ``pkg_resources``.
 
 Here we only need a very simple template, which we create in ``static/html/simplevideo.html``: ::
@@ -205,11 +205,10 @@ Here we only need a very simple template, which we create in ``static/html/simpl
     </div>
 
 This template is not strictly necessary here, as we only use it to include the HTML returned by the
-oEmbed provider in a ``<div>``, but it will be handy to add additional HTML to our XBlock later
-on. It also allows you to see how static files and templates are loaded from the
-``static/`` subfolders, using the `pkg_resources
-<http://pythonhosted.org/distribute/pkg_resources.html>`_ module. Later on, we will use the same
-method to load CSS and JavaScript files.
+oEmbed provider in a ``<div>``, but it will be handy to add additional HTML to our XBlock later on.
+It also allows you to see how static files and templates are loaded from the ``static/`` subfolders,
+using the `pkg_resources <http://pythonhosted.org/setuptools/pkg_resources.html>`_ module. Later on,
+we will use the same method to load CSS and JavaScript files.
 
 Loading an example from the workbench (scenarios)
 =================================================
@@ -259,10 +258,10 @@ Registering an XBlock (entry point)
 ===================================
 
 XBlocks are loaded dynamically as plugins, using the `entry_points mechanism of setuptools
-<http://pythonhosted.org/distribute/setuptools.html#dynamic-discovery-of-services-and-plugins>`_. XBlocks
-are registered by looking up entry points with the name ``xblock.v1``. The workbench will call the
-``workbench_scenarios()`` method on each registered XBlock, to populate the list of scenarios
-displayed on its homepage.
+<http://pythonhosted.org/setuptools/setuptools.html#dynamic-discovery-of-services-and-plugins>`_.
+XBlocks are registered by looking up entry points with the name ``xblock.v1``.  The workbench will
+call the ``workbench_scenarios()`` method on each registered XBlock, to populate the list of
+scenarios displayed on its homepage.
 
 Create the following ``setup.py`` file at the root of the ``xblock-simplevideo`` folder: ::
 
